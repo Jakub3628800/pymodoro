@@ -90,8 +90,9 @@ func main() {
 	allSessions = append(allSessions, session)
 	fmt.Println(allSessions)
 
-	//sessionsJson, _ := json.Marshal(allSessions)
-	//fmt.Println(string(sessionsJson))
-	saveSessions("sessions.json", allSessions)
+	err = saveSessions("sessions.json", allSessions)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 }
