@@ -3,12 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"log"
 	"os"
+	"os/exec"
 	"time"
 )
 
-const defaultSessionDuration time.Duration = time.Duration(1 * time.Minute)
+const defaultSessionDuration time.Duration = time.Duration(5 * time.Second)
 
 type session struct {
 	Start    time.Time `json:"start"`
@@ -35,36 +36,62 @@ func runSession(duration time.Duration, category string) session {
 	return session{Start: startTime, Duration: int(duration.Minutes()), Category: category}
 }
 
-func loadSessions(filepath string) (string, error) {
-	content, err := ioutil.ReadFile(filepath)
-	return string(content), err
+func loadSessions(filename string) ([]session, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var sessions []session
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&sessions)
+	if err != nil {
+		return nil, err
+	}
+
+	return sessions, nil
 }
 
-func saveSessions(filepath string, content string) error {
-	f, err := os.Open(filepath)
-	defer f.Close()
-	if err == nil {
+func saveSessions(filename string, sessions []session) error {
+	file, err := os.Create(filename)
+	if err != nil {
 		return err
 	}
-	f.WriteString(content)
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	err = encoder.Encode(sessions)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func main() {
-	s, err := loadSessions("sessions.json")
+func sendNotification(msg string) {
+	err := exec.Command("notify-send", msg).Run()
 	if err != nil {
-		fmt.Println("error loading sessions")
+		log.Fatal(err)
 	}
-	fmt.Println(s)
-	allSessions := []session{}
-	json.Unmarshal([]byte(s), &allSessions)
-	fmt.Println(allSessions)
+}
 
-	session := runSession(5*time.Second, "unknown")
+func main() {
+	allSessions, err := loadSessions("sessions.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	duration := defaultSessionDuration
+	sendNotification(fmt.Sprintf("Session started\n %s", duration.String()))
+	session := runSession(duration, "unknown")
+	sendNotification(fmt.Sprintf("Session ended\n %s", duration.String()))
+
 	allSessions = append(allSessions, session)
 	fmt.Println(allSessions)
 
-	sessionsJson, _ := json.Marshal(allSessions)
-	saveSessions("sessions.json", string(sessionsJson))
+	//sessionsJson, _ := json.Marshal(allSessions)
+	//fmt.Println(string(sessionsJson))
+	saveSessions("sessions.json", allSessions)
 
 }
