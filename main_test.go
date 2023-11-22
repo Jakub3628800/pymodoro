@@ -6,7 +6,7 @@ import (
 )
 
 func TestRunSession(t *testing.T) {
-	s := runSession(time.Second*5, "test")
+	s := runSession(time.Second*5, "test", true)
 
 	if s.Duration != 0 {
 		t.Errorf("got %d, want %d", s.Duration, 5)
