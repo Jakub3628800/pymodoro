@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -43,7 +44,8 @@ func runSession(duration time.Duration, category string, timerEnabled bool) sess
 }
 
 func loadSessions(filename string) ([]session, error) {
-	file, err := os.Open(filename)
+
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +54,7 @@ func loadSessions(filename string) ([]session, error) {
 	var sessions []session
 	decoder := json.NewDecoder(file)
 	err = decoder.Decode(&sessions)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return nil, err
 	}
 
@@ -87,28 +89,34 @@ func sendNotification(msg string, silent bool) {
 }
 
 func main() {
-	allSessions, err := loadSessions("sessions.json")
-	if err != nil {
-		log.Fatal(err)
-	}
 
+	category := flag.String("category", "development", "Category of the session")
 	durationFlag := flag.Duration("duration", defaultSessionDuration, "Duration of the session")
 	notificationFlag := flag.Bool("notifications", true, "Send notifications with notify-send")
 	timerFlag := flag.Bool("timer", true, "Output timer to stdout")
 
 	flag.Parse()
 
+	sessionsFileName, isSet := os.LookupEnv("SESSIONS_FILE")
+	if !isSet {
+		sessionsFileName = "sessions.json"
+	}
+	allSessions, err := loadSessions(sessionsFileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	duration := *durationFlag
 	notificationsEnabled := *notificationFlag
 	timerEnabled := *timerFlag
 
-	sendNotification(fmt.Sprintf("Session start\n %s", duration.String()), notificationsEnabled)
-	session := runSession(duration, "unknown", timerEnabled)
-	sendNotification(fmt.Sprintf("Session end\n %s", duration.String()), notificationsEnabled)
+	sendNotification(fmt.Sprintf("Session started: %s", duration.String()), notificationsEnabled)
+	session := runSession(duration, *category, timerEnabled)
+	sendNotification(fmt.Sprintf("Session ended: %s", duration.String()), notificationsEnabled)
 
 	allSessions = append(allSessions, session)
 
-	err = saveSessions("sessions.json", allSessions)
+	err = saveSessions(sessionsFileName, allSessions)
 	if err != nil {
 		log.Fatal(err)
 	}
