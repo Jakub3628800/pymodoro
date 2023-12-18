@@ -1,1 +1,1 @@
-# pymodoro
+# pomodoro
