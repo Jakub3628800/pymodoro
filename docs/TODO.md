@@ -1,4 +1,9 @@
 
 # TODO
-- try pomodoro as a timer during my work
+
+soon
+- make resume logic
+
+later
 - make installation from github easier
+
