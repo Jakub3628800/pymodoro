@@ -6,3 +6,15 @@ Usage:
 pomodoro --help
 ```
 
+
+
+## Install from release
+
+```bash
+RELEASE_TAG="v0.0.2"
+TARGET_DIR="~/.local/bin"
+wget https://github.com/Jakub3628800/pomodoro/releases/download/${RELEASE_TAG}/pomodoro.zip pomodoro.zip
+unzip pomodoro.zip
+mv pomodoro ${TARGET_DIR}
+rm pomodoro.zip
+```
