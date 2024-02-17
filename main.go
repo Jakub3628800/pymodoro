@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const defaultSessionDuration time.Duration = time.Duration(5 * time.Second)
+const defaultSessionDuration time.Duration = time.Duration(25 * time.Minute)
 
 type session struct {
 	Start    time.Time `json:"start"`
