@@ -97,7 +97,7 @@ func main() {
 
 	flag.Parse()
 
-	sessionsFileName, isSet := os.LookupEnv("SESSIONS_FILE")
+	sessionsFileName, isSet := os.LookupEnv("POMODORO_SESSIONS_FILE")
 	if !isSet {
 		sessionsFileName = "sessions.json"
 	}
