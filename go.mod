@@ -1,4 +1,4 @@
-module pomodoro
+module td
 
 go 1.18
 

@@ -6,7 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"pomodoro/vault"
+	"td/core"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -55,8 +55,8 @@ type model struct {
 }
 
 func initialModel() model {
-	fname := vault.GetFilename(time.Now(), "td")
-	ch, sel, _ := vault.LoadLinesWithSelection(fname)
+	fname := core.GetFilename(time.Now())
+	ch, sel, _ := core.LoadLinesWithSelection(fname)
 	return model{
 		// Our to-do list is a grocery list
 		choices: ch,
@@ -71,12 +71,12 @@ func initialModel() model {
 }
 
 func (m model) Save() {
-	vault.UpdateChoices(m.choices, m.selected, m.filename)
+	core.UpdateChoices(m.choices, m.selected, m.filename)
 }
 
 func (m *model) Refresh() {
-	m.filename = vault.GetFilename(m.date, "td")
-	ch, sel, _ := vault.LoadLinesWithSelection(m.filename)
+	m.filename = core.GetFilename(m.date)
+	ch, sel, _ := core.LoadLinesWithSelection(m.filename)
 	m.choices = ch
 	m.selected = sel
 }
@@ -121,7 +121,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "e":
-			vault.OpenEditor(m.filename)
+			core.OpenEditor(m.filename)
 			a := &m
 			a.Refresh()
 

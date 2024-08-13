@@ -1,20 +1,25 @@
-# pomodoro
+# td
 
-Pomodoro is a simple timer that helps you to stay focused on your work. It is a CLI tool to start a timer for 25 minutes and then take a 5 minutes break. After 4 pomodoros, it takes a longer break of 15 minutes.
+To-Do ToDay is a simple TUI app for tracking tasks with a focus on daily workflow. Adding and checking tasks, while the backend
+storage is a directory of markdown files.
+
 Usage:
 ```
-pomodoro --help
+td --help
 ```
 
+# run locally
+```bash
+go run main.go
+```
 
+# test
+```bash
+go test -v ./...
+```
 
-## Install from release
+# build
 
 ```bash
-RELEASE_TAG="v0.0.2"
-TARGET_DIR="~/.local/bin"
-wget https://github.com/Jakub3628800/pomodoro/releases/download/${RELEASE_TAG}/pomodoro.zip pomodoro.zip
-unzip pomodoro.zip
-mv pomodoro ${TARGET_DIR}
-rm pomodoro.zip
+go build -o td main.go
 ```

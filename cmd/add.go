@@ -5,7 +5,7 @@ package cmd
 
 import (
 	"fmt"
-	"pomodoro/vault"
+	"td/core"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -25,13 +25,16 @@ var addCmd = &cobra.Command{
 			return
 		}
 
-		filename := vault.GetFilename(date, "td")
+		filename := core.GetFilename(date)
 
-		contains, _ := vault.FileContainsLine(filename, args[0])
+		contains, _ := core.FileContainsLine(filename, args[0])
 		if contains {
 			fmt.Println("This item already exists. Skipping")
 		} else {
-			vault.AppendLineToFile(filename, args[0])
+			err := core.AppendLineToFile(filename, args[0])
+			if err != nil {
+				fmt.Println("Error appending line to file.")
+			}
 		}
 	},
 }

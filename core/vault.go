@@ -1,35 +1,32 @@
-package vault
+package core
 
 import (
 	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// Ok
-func GetFilename(date time.Time, vaultLoc string) string {
+const vaultLoc = ".td"
+const intervalMode = "daily"
 
-	year := strconv.Itoa(date.Year())
+// Get filename for a given time
+func GetFilename(date time.Time) string {
+
+	year, week := date.ISOWeek()
 	month := date.Month().String()
 
-	_ = os.MkdirAll(vaultLoc+"/"+year, os.ModePerm)
-	_ = os.MkdirAll(vaultLoc+"/"+year+"/"+month, os.ModePerm)
+	if intervalMode == "daily" {
+		return filepath.Join(vaultLoc, date.Format("2006/January/2"))
+	} else if intervalMode == "weekly" {
+		return fmt.Sprintf("%s/%d/%s/week%d", vaultLoc, year, month, week)
+	}
 
-	day := strconv.Itoa(date.Day())
-	filepath := vaultLoc + "/" + year + "/" + month + "/" + day
-	//file, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
-	//if err != nil {
-	//	if os.IsExist(err) {
-	//	} else {
-	//		fmt.Println("Error creating file:", err)
-	//	}
-	//}
-	//defer file.Close()
-	return filepath
+	return vaultLoc + "/" + strconv.Itoa(year) + "/" + month + "/" + month
 }
 
 // Append line to file
