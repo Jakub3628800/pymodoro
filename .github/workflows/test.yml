@@ -17,11 +17,11 @@ jobs:
       - name: Test
         run: go test -v ./...
       
-      - name: Build
-        run: make build 
+      #- name: Build
+      #  run: make build 
       
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: pomodoro 
-          path: bin/pomodoro
+      #- name: Upload artifact
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: pomodoro 
+      #    path: bin/pomodoro
