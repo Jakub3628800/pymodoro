@@ -25,13 +25,11 @@ var addCmd = &cobra.Command{
 			return
 		}
 
-		filename := core.GetFilename(date)
-
-		contains, _ := core.FileContainsLine(filename, args[0])
-		if contains {
+		contains, _ := core.ContainsLine(date, args[0])
+		if contains != 0 {
 			fmt.Println("This item already exists. Skipping")
 		} else {
-			err := core.AppendLineToFile(filename, args[0])
+			err := core.AddTask(date, args[0])
 			if err != nil {
 				fmt.Println("Error appending line to file.")
 			}
