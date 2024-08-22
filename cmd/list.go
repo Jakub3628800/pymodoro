@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 	"td/core"
 	"time"
 
@@ -16,13 +17,8 @@ import (
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "List tasks for today.",
+	Long:  "List tasks for today",
 	Run: func(cmd *cobra.Command, args []string) {
 		p := tea.NewProgram(initialModel())
 		if _, err := p.Run(); err != nil {
@@ -34,55 +30,32 @@ to quickly create a Cobra application.`,
 
 func init() {
 	rootCmd.AddCommand(listCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// listCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// listCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
 type model struct {
-	choices  []string         // items on the to-do list
-	cursor   int              // which to-do list item our cursor is pointing at
-	selected map[int]struct{} // which to-do items are selected
-	filename string
-	date     time.Time
+	cursor int // which to-do list item our cursor is pointing at
+	tasks  []core.Task
+	date   time.Time
 }
 
 func initialModel() model {
-	fname := core.GetFilename(time.Now())
-	ch, sel, _ := core.LoadLinesWithSelection(fname)
+	tasks, _ := core.LoadLinesWithSelection(time.Now())
 	return model{
-		// Our to-do list is a grocery list
-		choices: ch,
-
-		// A map which indicates which choices are selected. We're using
-		// the  map like a mathematical set. The keys refer to the indexes
-		// of the `choices` slice, above.
-		selected: sel,
-		filename: fname,
-		date:     time.Now(),
+		tasks: tasks,
+		date:  time.Now(),
 	}
 }
 
 func (m model) Save() {
-	core.UpdateChoices(m.choices, m.selected, m.filename)
+	//core.UpdateChoices(m.choices, m.selected, m.date)
 }
 
 func (m *model) Refresh() {
-	m.filename = core.GetFilename(m.date)
-	ch, sel, _ := core.LoadLinesWithSelection(m.filename)
-	m.choices = ch
-	m.selected = sel
+	tasks, _ := core.LoadLinesWithSelection(time.Now())
+	m.tasks = tasks
 }
 
 func (m model) Init() tea.Cmd {
-	// Just return `nil`, which means "no I/O right now, please."
 	return nil
 }
 
@@ -105,36 +78,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 			}
 		case "left", "h":
-			m.date = m.date.Add(-24 * time.Hour)
+			m.date = core.PreviousDate(m.date)
 			a := &m
 			a.Refresh()
 
 		case "right", "l":
-			m.date = m.date.Add(24 * time.Hour)
+			m.date = core.NextDate(m.date)
 			a := &m
 			a.Refresh()
 
 		// The "down" and "j" keys move the cursor down
 		case "down", "j":
-			if m.cursor < len(m.choices)-1 {
+			if m.cursor < len(m.tasks)-1 {
 				m.cursor++
 			}
 
 		case "e":
-			core.OpenEditor(m.filename)
+			lineNumber, _ := core.ContainsLine(m.date, m.tasks[m.cursor].Line)
+			core.OpenEditor(m.date, lineNumber)
 			a := &m
 			a.Refresh()
 
 		// The "enter" key and the spacebar (a literal space) toggle
 		// the selected state for the item that the cursor is pointing at.
 		case "enter", " ":
-			_, ok := m.selected[m.cursor]
-			if ok {
-				delete(m.selected, m.cursor)
+			selected := m.tasks[m.cursor].Selected
+			if selected {
+				m.tasks[m.cursor].Selected = false
+				core.UpdateTaskStatus(false, m.tasks[m.cursor].Line, m.date)
 			} else {
-				m.selected[m.cursor] = struct{}{}
+				m.tasks[m.cursor].Selected = true
+				core.UpdateTaskStatus(true, m.tasks[m.cursor].Line, m.date)
 			}
-			m.Save()
 		}
 	}
 
@@ -145,10 +120,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	// The header
-	s := m.date.Format("2006-01-02") + " " + m.date.Weekday().String() + "\n\n"
+	s := core.GetHeader(m.date)
+	//s := m.date.Format("2006-01-02") + " " + m.date.Weekday().String() + "\n\n"
 
 	// Iterate over our choices
-	for i, choice := range m.choices {
+	for i, task := range m.tasks {
 
 		// Is the cursor pointing at this choice?
 		cursor := " " // no cursor
@@ -158,17 +134,18 @@ func (m model) View() string {
 
 		// Is this choice selected?
 		checked := " " // not selected
-		if _, ok := m.selected[i]; ok {
+		if m.tasks[i].Selected {
 			checked = "x" // selected!
 		}
 
 		// Render the row
-		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
+		replaced := strings.ReplaceAll(task.Line, "- [ ]", "")
+		replaced = strings.ReplaceAll(replaced, "- [x]", "")
+		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, replaced)
 	}
 
 	// The footer
 	s += "\nPress q to quit.\n"
-	s += "Press e to edit file.\n"
 
 	// Send the UI for rendering
 	return s
