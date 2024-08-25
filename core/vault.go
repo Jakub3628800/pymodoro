@@ -109,7 +109,7 @@ func createFile(path string) error {
 	}
 
 	if fileExists(templateFile()) {
-		cmd := exec.Command("cp", vaultLoc+templatePath, path)
+		cmd := exec.Command("cp", templateFile(), path)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to copy file: %w", err)
 		}
@@ -167,6 +167,7 @@ func linesWithSelection(filename string) ([]Task, error) {
 	var tasks []Task
 
 	if !fileExists(filename) {
+		fmt.Println(fileExists(templateFile()))
 		if fileExists(templateFile()) {
 			return linesWithSelection(templateFile())
 		} else {
@@ -317,6 +318,10 @@ func UpdateTaskStatus(selected bool, taskDescription string, date time.Time) err
 //}
 
 func containsLine(filename string, searchLine string) (int, error) {
+
+	if !fileExists(filename) {
+		return 0, nil
+	}
 
 	file, err := os.Open(filename)
 	if err != nil {
