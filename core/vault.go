@@ -42,7 +42,6 @@ func getFilename(date time.Time) string {
 
 	year, week := date.ISOWeek()
 	month := date.Month().String()
-
 	if intervalMode == "daily" {
 		return filepath.Join(vaultLoc, date.Format("2006/January/2"))
 	} else if intervalMode == "weekly" {
@@ -167,7 +166,6 @@ func linesWithSelection(filename string) ([]Task, error) {
 	var tasks []Task
 
 	if !fileExists(filename) {
-		fmt.Println(fileExists(templateFile()))
 		if fileExists(templateFile()) {
 			return linesWithSelection(templateFile())
 		} else {

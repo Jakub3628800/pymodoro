@@ -88,7 +88,7 @@ func (m pomomodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Note that you can also use progress.Model.SetPercent to set the
 		// percentage value explicitly, too.
-		cmd := m.progress.IncrPercent(0.1)
+		cmd := m.progress.IncrPercent(0.01)
 		return m, tea.Batch(tickCmd(), cmd)
 
 	// FrameMsg is sent when the progress bar wants to animate itself
@@ -105,7 +105,7 @@ func (m pomomodel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m pomomodel) View() string {
 	pad := strings.Repeat(" ", padding)
 	return "\n" +
-		pad + m.progress.View() + "\n\n" +
+		pad + m.progress.View() + "hello" + "\n\n" +
 		pad + helpStyle("Press any key to quit")
 }
 
