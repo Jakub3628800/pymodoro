@@ -15,6 +15,7 @@ import (
 var vaultLoc string
 var intervalMode string //daily, weekly or monthly
 var templatePath string
+var skipWeekend bool
 
 type Task struct {
 	Line     string
@@ -29,60 +30,65 @@ func getEnv(key, defaultValue string) string {
 }
 
 func templateFile() string {
-	return vaultLoc + "/" + templatePath
+	return filepath.Join(vaultLoc, templatePath)
 }
 
 func init() {
 	vaultLoc = getEnv("TD_VAULT_LOC", ".td")
 	intervalMode = getEnv("TD_INTERVAL_MODE", "weekly")
-	templatePath = getEnv("TD_TEMPLATE_PATH", ".template") // relative to vault location
+	templatePath = getEnv("TD_TEMPLATE_PATH", ".template")
+	skipWeekend = getEnv("TD_SKIP_WEEKEND", "false") == "true"
 }
 
 func getFilename(date time.Time) string {
-
 	year, week := date.ISOWeek()
 	month := date.Month().String()
 	if intervalMode == "daily" {
-		return filepath.Join(vaultLoc, date.Format("2006/January/2"))
+		return filepath.Join(vaultLoc, date.Format("2006/January/02.md"))
 	} else if intervalMode == "weekly" {
-		return fmt.Sprintf("%s/%d/%s/week%d", vaultLoc, year, month, week)
+		return fmt.Sprintf("%s/%d/%s/week%d.md", vaultLoc, year, month, week)
 	}
 
-	return vaultLoc + "/" + strconv.Itoa(year) + "/" + month + "/" + month
+	return filepath.Join(vaultLoc, strconv.Itoa(year), month, month+".md")
 }
 
 func GetHeader(date time.Time) string {
-
 	if intervalMode == "daily" {
-
 		return date.Format("2006-01-02") + " " + date.Weekday().String() + "\n\n"
 	} else {
 		_, week := date.ISOWeek()
 		return "Week " + strconv.Itoa(week) + "\n\n"
 	}
-
 }
 
 func NextDate(date time.Time) time.Time {
 	if intervalMode == "daily" {
-		return date.Add(24 * time.Hour)
+		next := date.AddDate(0, 0, 1)
+		if skipWeekend {
+			for next.Weekday() == time.Saturday || next.Weekday() == time.Sunday {
+				next = next.AddDate(0, 0, 1)
+			}
+		}
+		return next
 	} else if intervalMode == "weekly" {
-
-		return date.Add(24 * 7 * time.Hour)
+		return date.AddDate(0, 0, 7)
 	}
-	return date.Add(24 * 7 * 31 * time.Hour) //todo fix this
-
+	return date.AddDate(0, 1, 0) // Monthly mode
 }
 
 func PreviousDate(date time.Time) time.Time {
 	if intervalMode == "daily" {
-		return date.Add(-24 * time.Hour)
+		prev := date.AddDate(0, 0, -1)
+		if skipWeekend {
+			for prev.Weekday() == time.Saturday || prev.Weekday() == time.Sunday {
+				prev = prev.AddDate(0, 0, -1)
+			}
+		}
+		return prev
 	} else if intervalMode == "weekly" {
-
-		return date.Add(-24 * 7 * time.Hour)
+		return date.AddDate(0, 0, -7)
 	}
-	return date.Add(24 * 7 * 31 * time.Hour) //todo fix this
-
+	return date.AddDate(0, -1, 0) // Monthly mode
 }
 
 func openFile(date time.Time) (*os.File, error) {
@@ -92,13 +98,7 @@ func openFile(date time.Time) (*os.File, error) {
 
 func fileExists(filename string) bool {
 	_, err := os.Stat(filename)
-	if err == nil {
-		return true
-	}
-	if os.IsNotExist(err) {
-		return false
-	}
-	return false
+	return err == nil
 }
 
 func createFile(path string) error {
@@ -118,12 +118,10 @@ func createFile(path string) error {
 			return fmt.Errorf("failed to create file: %w", err)
 		}
 		defer file.Close()
-
 	}
 	return nil
 }
 
-// Append line to file corresponding to date
 func AddTask(date time.Time, line string) error {
 	line = "- [ ] " + line
 
@@ -137,7 +135,6 @@ func AddTask(date time.Time, line string) error {
 	}
 	defer file.Close()
 
-	// Write the line to the file, followed by a newline character
 	_, err = file.WriteString(line + "\n")
 	if err != nil {
 		return err
@@ -147,19 +144,11 @@ func AddTask(date time.Time, line string) error {
 }
 
 func isLineCheckbox(line string) (bool, bool) {
-	// matches[1] is the indentation (spaces or tabs)
-	// matches[2] is the checkbox status (space for unchecked, 'x' for checked)
-	// matches[3] is the content of the line
-	selected := false
 	pattern := regexp.MustCompile(`^([\t ]*)- \[( |x)\] ?(.*)$`)
 	if matches := pattern.FindStringSubmatch(line); matches != nil {
-		if matches[2] == "x" {
-			selected = true
-		}
-		return true, selected
+		return true, matches[2] == "x"
 	}
 	return false, false
-
 }
 
 func linesWithSelection(filename string) ([]Task, error) {
@@ -181,24 +170,19 @@ func linesWithSelection(filename string) ([]Task, error) {
 
 	scanner := bufio.NewScanner(file)
 
-	// Iterate over lines
-	lineNumber := 1
 	for scanner.Scan() {
 		line := scanner.Text()
 		trimmedLine := strings.TrimSpace(line)
 
 		if trimmedLine == "" || trimmedLine == "- [ ]" || trimmedLine == "- [x]" {
-			lineNumber++
-			continue // Skip empty lines or lines with only checkbox
+			continue
 		}
 		isCheck, selected := isLineCheckbox(line)
 		if isCheck {
 			tasks = append(tasks, Task{line, selected})
 		}
-		lineNumber++
 	}
 
-	// Check for errors during scanning
 	if err := scanner.Err(); err != nil {
 		return tasks, fmt.Errorf("error reading file: %v", err)
 	}
@@ -208,17 +192,33 @@ func linesWithSelection(filename string) ([]Task, error) {
 func LoadLinesWithSelection(date time.Time) ([]Task, error) {
 	filename := getFilename(date)
 	return linesWithSelection(filename)
-
 }
 
 func OpenEditor(date time.Time, lineNumber int) error {
-	// Create a command to open the file with vim
 	filename := getFilename(date)
-	if !fileExists(filename) {
-		createFile(filename)
+
+	// Ensure the directory exists
+	dir := filepath.Dir(filename)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
 	}
+
+	// Create the file if it doesn't exist
+	if !fileExists(filename) {
+		if err := createFile(filename); err != nil {
+			return fmt.Errorf("failed to create file: %w", err)
+		}
+	}
+
+	// Get the editor from the EDITOR environment variable, defaulting to "vim"
+	editor := os.Getenv("EDITOR")
+	if editor == "" {
+		editor = "vim"
+	}
+
+	// Prepare the command
 	args := []string{fmt.Sprintf("+%d", lineNumber), filename}
-	cmd := exec.Command("vim", args...)
+	cmd := exec.Command(editor, args...)
 
 	// Set the command's standard input, output, and error to the current program's ones
 	cmd.Stdin = os.Stdin
@@ -228,7 +228,7 @@ func OpenEditor(date time.Time, lineNumber int) error {
 	// Run the command and wait for it to finish
 	err := cmd.Run()
 	if err != nil {
-		return err
+		return fmt.Errorf("error running editor: %w", err)
 	}
 
 	return nil
@@ -245,10 +245,8 @@ func UpdateTaskStatus(selected bool, taskDescription string, date time.Time) err
 		return fmt.Errorf("error reading file: %w", err)
 	}
 
-	// Split the content into lines
 	lines := strings.Split(string(file), "\n")
 
-	// Find and update the line
 	lineUpdated := false
 	for i, line := range lines {
 		if strings.Contains(line, taskDescription) {
@@ -266,10 +264,8 @@ func UpdateTaskStatus(selected bool, taskDescription string, date time.Time) err
 		return fmt.Errorf("task not found in the file")
 	}
 
-	// Join the lines back into a single string
 	updatedContent := strings.Join(lines, "\n")
 
-	// Write the updated content back to the file
 	err = os.WriteFile(filename, []byte(updatedContent), 0644)
 	if err != nil {
 		return fmt.Errorf("error writing to file: %v", err)
@@ -278,45 +274,16 @@ func UpdateTaskStatus(selected bool, taskDescription string, date time.Time) err
 	return nil
 }
 
-//func UpdateChoices(choices []string, selected map[int]struct{}, date time.Time) error {
-//filename := getFilename(date)
-//if !fileExists(filename) {
-//createFile(filename)
-//}
+func ContainsLine(date time.Time, searchLine string) (int, error) {
+	filename := getFilename(date)
 
-//file, err := os.ReadFile(filename)
-//if err != nil {
-//return fmt.Errorf("error reading file: %w", err)
-//}
-
-//lines := strings.Split(string(file), "\n")
-
-//// Process each line
-//for i, line := range lines {
-//for choiceIndex, choice := range choices {
-//if strings.Contains(line, choice) {
-//_, isSelected := selected[choiceIndex]
-//if isSelected && strings.Contains(line, "[ ]") {
-//lines[i] = strings.Replace(line, "[ ]", "[x]", 1)
-//} else if !isSelected && strings.Contains(line, "[x]") {
-//lines[i] = strings.Replace(line, "[x]", "[ ]", 1)
-//}
-//}
-//}
-//}
-
-//// Write the updated content back to the file
-//output := strings.Join(lines, "\n")
-//err = os.WriteFile(filename, []byte(output), 0644)
-//if err != nil {
-//return fmt.Errorf("error writing file: %w", err)
-//}
-
-//return nil
-//}
+	if !fileExists(filename) {
+		return containsLine(templateFile(), searchLine)
+	}
+	return containsLine(filename, searchLine)
+}
 
 func containsLine(filename string, searchLine string) (int, error) {
-
 	if !fileExists(filename) {
 		return 0, nil
 	}
@@ -343,13 +310,4 @@ func containsLine(filename string, searchLine string) (int, error) {
 	}
 
 	return 0, nil
-}
-
-func ContainsLine(date time.Time, searchLine string) (int, error) {
-	filename := getFilename(date)
-
-	if !fileExists(filename) {
-		return containsLine(templateFile(), searchLine)
-	}
-	return containsLine(filename, searchLine)
 }
