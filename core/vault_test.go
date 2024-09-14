@@ -30,21 +30,21 @@ func TestGetFilename(t *testing.T) {
 			vaultLoc:     "/test/vault",
 			intervalMode: "daily",
 			date:         time.Date(2024, 8, 30, 0, 0, 0, 0, time.UTC),
-			want:         "/test/vault/2024/August/30",
+			want:         "/test/vault/2024/August/30.md",
 		},
 		{
 			name:         "Weekly mode",
 			vaultLoc:     "/test/vault",
 			intervalMode: "weekly",
 			date:         time.Date(2024, 8, 30, 0, 0, 0, 0, time.UTC),
-			want:         "/test/vault/2024/August/week35",
+			want:         "/test/vault/2024/August/week35.md",
 		},
 		{
 			name:         "Monthly mode",
 			vaultLoc:     "/test/vault",
 			intervalMode: "monthly",
 			date:         time.Date(2024, 8, 30, 0, 0, 0, 0, time.UTC),
-			want:         "/test/vault/2024/August/August",
+			want:         "/test/vault/2024/August/August.md",
 		},
 	}
 
@@ -181,5 +181,101 @@ func TestUpdateTaskStatus(t *testing.T) {
 	expectedContent := "- [ ] Task 1\n- [x] Task 2\n- [ ] Task 3\n"
 	if string(content) != expectedContent {
 		t.Errorf("File content = %v, want %v", string(content), expectedContent)
+	}
+}
+
+func TestNextDateWithWeekendSkipping(t *testing.T) {
+	originalIntervalMode := intervalMode
+	originalSkipWeekend := skipWeekend
+	defer func() {
+		intervalMode = originalIntervalMode
+		skipWeekend = originalSkipWeekend
+	}()
+
+	intervalMode = "daily"
+	skipWeekend = true
+
+	tests := []struct {
+		name string
+		date time.Time
+		want time.Time
+	}{
+		{
+			name: "Friday to Monday",
+			date: time.Date(2024, 8, 30, 0, 0, 0, 0, time.UTC), // Friday
+			want: time.Date(2024, 9, 2, 0, 0, 0, 0, time.UTC),  // Monday
+		},
+		{
+			name: "Saturday to Monday",
+			date: time.Date(2024, 8, 31, 0, 0, 0, 0, time.UTC), // Saturday
+			want: time.Date(2024, 9, 2, 0, 0, 0, 0, time.UTC),  // Monday
+		},
+		{
+			name: "Sunday to Monday",
+			date: time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC), // Sunday
+			want: time.Date(2024, 9, 2, 0, 0, 0, 0, time.UTC), // Monday
+		},
+		{
+			name: "Monday to Tuesday",
+			date: time.Date(2024, 9, 2, 0, 0, 0, 0, time.UTC), // Monday
+			want: time.Date(2024, 9, 3, 0, 0, 0, 0, time.UTC), // Tuesday
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NextDate(tt.date)
+			if !got.Equal(tt.want) {
+				t.Errorf("NextDate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPreviousDateWithWeekendSkipping(t *testing.T) {
+	originalIntervalMode := intervalMode
+	originalSkipWeekend := skipWeekend
+	defer func() {
+		intervalMode = originalIntervalMode
+		skipWeekend = originalSkipWeekend
+	}()
+
+	intervalMode = "daily"
+	skipWeekend = true
+
+	tests := []struct {
+		name string
+		date time.Time
+		want time.Time
+	}{
+		{
+			name: "Monday to Friday",
+			date: time.Date(2024, 9, 2, 0, 0, 0, 0, time.UTC),  // Monday
+			want: time.Date(2024, 8, 30, 0, 0, 0, 0, time.UTC), // Friday
+		},
+		{
+			name: "Saturday to Friday",
+			date: time.Date(2024, 8, 31, 0, 0, 0, 0, time.UTC), // Saturday
+			want: time.Date(2024, 8, 30, 0, 0, 0, 0, time.UTC), // Friday
+		},
+		{
+			name: "Sunday to Friday",
+			date: time.Date(2024, 9, 1, 0, 0, 0, 0, time.UTC),  // Sunday
+			want: time.Date(2024, 8, 30, 0, 0, 0, 0, time.UTC), // Friday
+		},
+		{
+			name: "Friday to Thursday",
+			date: time.Date(2024, 8, 30, 0, 0, 0, 0, time.UTC), // Friday
+			want: time.Date(2024, 8, 29, 0, 0, 0, 0, time.UTC), // Thursday
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := PreviousDate(tt.date)
+			if !got.Equal(tt.want) {
+				t.Errorf("PreviousDate() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }
