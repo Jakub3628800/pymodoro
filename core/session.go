@@ -76,7 +76,7 @@ func saveSessions(filename string, sessions []session) error {
 	return nil
 }
 
-func sendNotification(msg string, silent bool) {
+func SendNotification(msg string, silent bool) {
 	if silent {
 		fmt.Println(msg)
 		fmt.Println()

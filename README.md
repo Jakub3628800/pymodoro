@@ -78,24 +78,6 @@ Run the test suite:
 go test -v ./...
 ```
 
-## 📁 Project Structure
-
-```
-td/
-├── cmd/
-│   ├── add.go
-│   ├── list.go
-│   ├── pomo.go
-│   └── root.go
-├── core/
-│   ├── session.go
-│   └── vault.go
-├── main.go
-├── go.mod
-├── go.sum
-└── README.md
-```
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
