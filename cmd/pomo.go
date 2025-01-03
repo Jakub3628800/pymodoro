@@ -40,9 +40,12 @@ var helpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#626262")).Render
 type tickMsg time.Time
 
 type pomoModel struct {
-	progress progress.Model
-	start    time.Time
-	duration time.Duration
+	progress  progress.Model
+	start     time.Time
+	duration  time.Duration
+	elapsed   time.Duration
+	isPaused  bool
+	pauseTime time.Time
 }
 
 func initialPomoModel() pomoModel {
@@ -53,6 +56,7 @@ func initialPomoModel() pomoModel {
 		),
 		duration: 25 * time.Minute,
 		start:    time.Now(),
+		isPaused: false,
 	}
 }
 
@@ -63,8 +67,19 @@ func (m pomoModel) Init() tea.Cmd {
 func (m pomoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if msg.String() == "q" {
+		switch msg.String() {
+		case "q":
 			return m, tea.Quit
+		case "p", " ":
+			if m.isPaused {
+				m.elapsed += time.Since(m.pauseTime)
+				m.isPaused = false
+				return m, tickCmd()
+			} else {
+				m.isPaused = true
+				m.pauseTime = time.Now()
+				return m, nil
+			}
 		}
 
 	case tea.WindowSizeMsg:
@@ -75,7 +90,11 @@ func (m pomoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tickMsg:
-		elapsed := time.Since(m.start)
+		if m.isPaused {
+			return m, nil
+		}
+		
+		elapsed := time.Since(m.start) - m.elapsed
 		if elapsed >= m.duration {
 			core.SendNotification("pomo session 25m done", false)
 			return m, tea.Quit
@@ -95,7 +114,13 @@ func (m pomoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m pomoModel) View() string {
-	elapsed := time.Since(m.start)
+	var elapsed time.Duration
+	if m.isPaused {
+		elapsed = time.Since(m.start) - m.elapsed - time.Since(m.pauseTime)
+	} else {
+		elapsed = time.Since(m.start) - m.elapsed
+	}
+	
 	remaining := m.duration - elapsed
 	if remaining < 0 {
 		remaining = 0
@@ -105,9 +130,15 @@ func (m pomoModel) View() string {
 	seconds := int(remaining.Seconds()) % 60
 
 	pad := strings.Repeat(" ", padding)
+	status := ""
+	if m.isPaused {
+		status = "(Paused)"
+	}
+	
 	return "\n" +
-		pad + fmt.Sprintf("%02d:%02d", minutes, seconds) + "\n" +
+		pad + fmt.Sprintf("%02d:%02d %s", minutes, seconds, status) + "\n" +
 		pad + m.progress.View() + "\n\n" +
+		pad + helpStyle("Press 'p' or space to pause/resume") + "\n" +
 		pad + helpStyle("Press 'q' to quit")
 }
 
