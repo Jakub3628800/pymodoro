@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Lists</title>
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        a {
+            display: block;
+            padding: 10px;
+            background-color: #f0f0f0;
+            text-decoration: none;
+            color: #333;
+            border-radius: 5px;
+        }
+        a:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Todo Lists</h1>
+    <ul>
+        {% for file in todo_files %}
+        <li>
+            <a href="/todo/{{ file }}">{{ file }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
