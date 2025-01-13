@@ -194,7 +194,13 @@ func LoadLinesWithSelection(date time.Time) ([]Task, error) {
         return linesWithSelection(filename)
 }
 
-func OpenEditor(date time.Time, lineNumber int) error {
+var copyPreviousEnv bool
+
+func init() {
+        copyPreviousEnv = getEnv("TD_COPY_PREVIOUS", "false") == "true"
+}
+
+func OpenEditor(date time.Time, lineNumber int, copyPrevious bool) error {
         filename := getFilename(date)
 
         // Ensure the directory exists
@@ -205,19 +211,31 @@ func OpenEditor(date time.Time, lineNumber int) error {
 
         // Create the file if it doesn't exist
         if !fileExists(filename) {
-                if err := createFile(filename); err != nil {
+                var content string
+                if copyPrevious || copyPreviousEnv {
+                        prevDate := PreviousDate(date)
+                        prevFilename := getFilename(prevDate)
+                        if fileExists(prevFilename) {
+                                prevContent, err := os.ReadFile(prevFilename)
+                                if err != nil {
+                                        return fmt.Errorf("failed to read previous file: %w", err)
+                                }
+                                content = string(prevContent)
+                        }
+                }
+
+                // Add the header
+                header := GetHeader(date)
+                content = header + content
+
+                if err := os.WriteFile(filename, []byte(content), 0644); err != nil {
                         return fmt.Errorf("failed to create file: %w", err)
                 }
-                // If the file was just created, add the header
-                file, err := os.OpenFile(filename, os.O_WRONLY|os.O_APPEND, 0644)
-                if err != nil {
-                        return fmt.Errorf("failed to open file: %w", err)
-                }
-                defer file.Close()
-                _, err = file.WriteString(GetHeader(date))
-                if err != nil {
-                        return fmt.Errorf("failed to write header: %w", err)
-                }
+        }
+
+        // Skip launching the editor during tests
+        if os.Getenv("TD_TEST_MODE") == "true" {
+                return nil
         }
 
         // Get the editor from the EDITOR environment variable, defaulting to "vim"
