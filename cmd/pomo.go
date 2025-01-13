@@ -93,7 +93,7 @@ func (m pomoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.isPaused {
 			return m, nil
 		}
-		
+
 		elapsed := time.Since(m.start) - m.elapsed
 		if elapsed >= m.duration {
 			core.SendNotification("pomo session 25m done", false)
@@ -120,7 +120,7 @@ func (m pomoModel) View() string {
 	} else {
 		elapsed = time.Since(m.start) - m.elapsed
 	}
-	
+
 	remaining := m.duration - elapsed
 	if remaining < 0 {
 		remaining = 0
@@ -134,7 +134,7 @@ func (m pomoModel) View() string {
 	if m.isPaused {
 		status = "(Paused)"
 	}
-	
+
 	return "\n" +
 		pad + fmt.Sprintf("%02d:%02d %s", minutes, seconds, status) + "\n" +
 		pad + m.progress.View() + "\n\n" +
