@@ -13,6 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var duration int
+
 var pomoCmd = &cobra.Command{
 	Use:   "pomo",
 	Short: "Start a Pomodoro timer",
@@ -28,6 +30,7 @@ var pomoCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(pomoCmd)
+	pomoCmd.Flags().IntVarP(&duration, "duration", "d", 25, "Duration in minutes")
 }
 
 const (
@@ -54,7 +57,7 @@ func initialPomoModel() pomoModel {
 			progress.WithoutPercentage(),
 			progress.WithDefaultGradient(),
 		),
-		duration: 25 * time.Minute,
+		duration: time.Duration(duration) * time.Minute,
 		start:    time.Now(),
 		isPaused: false,
 	}
@@ -96,7 +99,7 @@ func (m pomoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		elapsed := time.Since(m.start) - m.elapsed
 		if elapsed >= m.duration {
-			core.SendNotification("pomo session 25m done", false)
+			core.SendNotification(fmt.Sprintf("pomo session %dm done", duration), false)
 			return m, tea.Quit
 		}
 
@@ -147,3 +150,4 @@ func tickCmd() tea.Cmd {
 		return tickMsg(t)
 	})
 }
+
