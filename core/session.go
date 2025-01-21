@@ -86,3 +86,18 @@ func SendNotification(msg string, silent bool) {
 		log.Fatal(err)
 	}
 }
+
+func PauseMusic() {
+  execPlayerctl("pause")
+}
+
+func PlayMusic() {
+  execPlayerctl("play")
+}
+
+func execPlayerctl(subcmd string) {
+  err := exec.Command("playerctl", subcmd).Run()
+  if err != nil {
+    log.Fatal(err)
+  }
+}
