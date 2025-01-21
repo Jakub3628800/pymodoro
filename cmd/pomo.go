@@ -64,6 +64,7 @@ func initialPomoModel() pomoModel {
 }
 
 func (m pomoModel) Init() tea.Cmd {
+        // core.PlayMusic()
 	return tickCmd()
 }
 
@@ -100,6 +101,7 @@ func (m pomoModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		elapsed := time.Since(m.start) - m.elapsed
 		if elapsed >= m.duration {
 			core.SendNotification(fmt.Sprintf("pomo session %dm done", duration), false)
+                        core.PauseMusic()
 			return m, tea.Quit
 		}
 
